@@ -6,32 +6,52 @@
         http://www.springframework.org/schema/beans/spring-beans.xsd
         http://code.alibabatech.com/schema/dubbo http://code.alibabatech.com/schema/dubbo/dubbo.xsd">
 
-    <bean class="org.apache.commons.dbcp.BasicDataSource" id="basicDataSource">
-        <property name="url" value="${dubbo.monitor.mysql.url}"/>
-        <property name="username" value="${dubbo.monitor.mysql.username}"/>
-        <property name="password" value="${dubbo.monitor.mysql.password}"/>
-        <property name="maxActive" value="${dubbo.monitor.mysql.pool.max}"/>
-        <property name="minIdle" value="${dubbo.monitor.mysql.pool.min}"/>
-        <property name="driverClassName" value="com.mysql.jdbc.Driver"/>
-        <property name="testOnBorrow" value="true"/>
-        <property name="testOnReturn" value="true"/>
-        <property name="testWhileIdle" value="true"/>
-        <property name="validationQuery" value="SELECT 1"></property>
-        <property name="timeBetweenEvictionRunsMillis" value="600"></property>
-        <property name="minEvictableIdleTimeMillis" value="1200"></property>
-        <!-- 超时自动收回 -->
-        <property name="removeAbandoned" value="true"></property>
-        <!--
-                   超时时间(以秒数为单位)设置超时时间有一个要注意的地方，
-                   超时时间=现在的时间-程序中创建Connection的时间，如果
-                   maxActive比较大，比如超过100，那么removeAbandonedTimeout
-                   可以设置长一点比如180， 也就是三分钟无响应的连接进行回收，
-                   当然应用的不同设置长度也不同。
-        -->
-        <property name="removeAbandonedTimeout" value="180"></property>
-        <!-- 在自动回收超时连接的时候打印连接的超时错误 -->
-        <property name="logAbandoned" value="true"></property>
+
+    <!-- 数据源配置, 使用 BoneCP 数据库连接池 -->
+    <bean id="basicDataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+        <!-- 数据源驱动类可不写，Druid默认会自动根据URL识别DriverClass -->
+        <property name="driverClassName" value="com.mysql.jdbc.Driver" />
+
+        <!-- 基本属性 url、user、password -->
+        <property name="url" value="${dubbo.monitor.mysql.url}" />
+        <property name="username" value="${dubbo.monitor.mysql.username}" />
+        <property name="password" value="${dubbo.monitor.mysql.password}" />
+
+        <!-- 配置初始化大小、最小、最大 -->
+        <property name="initialSize" value="5" />
+        <property name="minIdle" value="10" />
+        <property name="maxActive" value="50" />
+
+        <!-- 配置获取连接等待超时的时间 -->
+        <property name="maxWait" value="60000" />
+
+        <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+        <property name="timeBetweenEvictionRunsMillis" value="60000" />
+
+        <!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+        <property name="minEvictableIdleTimeMillis" value="300000" />
+
+        <property name="validationQuery" value="SELECT 'x' FROM DUAL" />
+        <property name="testWhileIdle" value="true" />
+        <property name="testOnBorrow" value="false" />
+        <property name="testOnReturn" value="false" />
+
+        <!-- 超过时间限制是否回收 -->
+        <property name="removeAbandoned" value="true" />
+        <!-- 超时时间；单位为秒。1800秒=30分钟 -->
+        <property name="removeAbandonedTimeout" value="1800" />
+        <!-- 关闭abanded连接时输出错误日志 -->
+        <property name="logAbandoned" value="true" />
+
+        <!-- 配置监控统计拦截的filters -->
+        <property name="filters" value="stat" />
     </bean>
+
+    <bean id="stat-filter" class="com.alibaba.druid.filter.stat.StatFilter">
+        <property name="slowSqlMillis" value="2000"/>
+        <property name="logSlowSql" value="true"/>
+    </bean>
+
     <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
         <property name="dataSource" ref="basicDataSource"/>
         <property name="configLocation" value="META-INF/mybatis/config.xml"/>
